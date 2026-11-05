@@ -112,7 +112,13 @@ public class SwiftFlutterForegroundTaskPlugin: NSObject, FlutterPlugin {
   
   // ================== App Lifecycle ===================
   public func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [AnyHashable : Any] = [:]) -> Bool {
-    UIApplication.shared.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+    // Deprecated since iOS 13, but still the trigger for legacy (pre-iOS-13) background fetch, and the
+    // podspec supports iOS 12. Only ask for a fetch window when the host declared the capability, so an
+    // app that does not use background fetch is never scheduled one.
+    if let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
+       modes.contains("fetch") {
+      UIApplication.shared.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+    }
     // Deliberately no BGTaskScheduler registration here: Flutter only delivers this plugin
     // application-delegate callback after launch completed, which is too late for
     // BGTaskScheduler.register (Dev-hwang/flutter_foreground_task#393, decentespresso/decaid#1073).

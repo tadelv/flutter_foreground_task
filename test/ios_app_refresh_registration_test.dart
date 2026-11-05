@@ -208,6 +208,21 @@ void main() {
     }
   });
 
+  test('the legacy background-fetch interval is gated on UIBackgroundModes', () {
+    final String body = _rawBody(
+        File(_pluginPath).readAsStringSync(), 'didFinishLaunchingWithOptions');
+    final int modes = body.indexOf('UIBackgroundModes');
+    final int fetch = body.indexOf('contains("fetch")');
+    final int call = body.indexOf('setMinimumBackgroundFetchInterval(');
+
+    expect(modes, isNonNegative);
+    expect(fetch, isNonNegative,
+        reason: 'the fetch interval must require the fetch background mode');
+    expect(call, isNonNegative);
+    expect(modes, lessThan(call));
+    expect(fetch, lessThan(call));
+  });
+
   test('background and scene callbacks cannot register directly', () {
     final String source = File(_pluginPath).readAsStringSync();
 

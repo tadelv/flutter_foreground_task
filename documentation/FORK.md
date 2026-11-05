@@ -7,7 +7,7 @@ Package identity, history, licence and Dart API stay upstream's; this document i
 |---|---|
 | Upstream base | `Dev-hwang/flutter_foreground_task` @ `f2acda8447dbf4e659be2782c010fe3dc6e8b187` ("release: 11.0.3") |
 | Upstream tags | **none** — upstream does not tag releases, so `11.0.3` is only addressable by commit SHA |
-| Fork version | `11.0.3+1` |
+| Fork version | `11.0.3+2` |
 | Downstream consumer | [decentespresso/decaid](https://github.com/decentespresso/decaid) (issue #1073) |
 | Upstream issue | [Dev-hwang/flutter_foreground_task#393](https://github.com/Dev-hwang/flutter_foreground_task/issues/393) |
 
@@ -58,6 +58,11 @@ Upstream 11.0.3 hit both:
 4. `scheduleAppRefresh()` returns early unless the task is actually registered, so a host that did not
    opt in never submits a request for a task it never registered (covers
    `applicationDidEnterBackground` and `sceneDidEnterBackground`, which keep calling it unchanged).
+5. The legacy `UIApplication.shared.setMinimumBackgroundFetchInterval(...)` call (deprecated since iOS 13,
+   still the trigger for pre-iOS-13 background fetch, and the podspec supports iOS 12) is now gated on
+   `UIBackgroundModes` containing `fetch`, so a host that never declared the capability is not scheduled
+   a fetch window. Hosts that opted in keep the legacy behaviour unchanged. (Review point from the
+   downstream fork review: remove-or-guard, guarded rather than removed.)
 
 The Objective-C shims, the podspec source list, `Package.swift`, `lib/` and `android/` are untouched.
 
@@ -68,7 +73,7 @@ An app that does nothing different after this fork:
 - never calls `BGTaskScheduler.register`, on cold launch, on engine init, on UIScene connection or
   reconnection;
 - does not need `BGTaskSchedulerPermittedIdentifiers` or a `fetch` entry in `UIBackgroundModes`;
-- never reaches `BGTaskScheduler.submit`;
+- never reaches `BGTaskScheduler.submit`, and never asks for a legacy background-fetch interval;
 - keeps the Android foreground service, the Dart API and the iOS foreground task lifecycle exactly as
   upstream.
 

@@ -1,3 +1,12 @@
+## 11.0.3+2
+
+Fork review follow-ups on top of 11.0.3+1 (no behaviour change for hosts that already opted in).
+
+* [**FIX-iOS**] Only request the legacy background-fetch interval
+  (`UIApplication.shared.setMinimumBackgroundFetchInterval`, deprecated since iOS 13 but still the trigger
+  for pre-iOS-13 background fetch) when the host declares `fetch` in `UIBackgroundModes`. Guarded rather
+  than removed, because the podspec still supports iOS 12. Review point 1.
+
 ## 11.0.3+1
 
 Fork patch for [decentespresso/decaid#1073](https://github.com/decentespresso/decaid/issues/1073) /
