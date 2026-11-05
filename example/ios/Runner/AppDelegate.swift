@@ -14,7 +14,12 @@ import flutter_foreground_task
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self
     }
-    
+
+    // Opt in to iOS background app refresh early enough for BGTaskScheduler:
+    // this must happen inside didFinishLaunching, before it returns.
+    // Requires BGTaskSchedulerPermittedIdentifiers + UIBackgroundModes/fetch in Info.plist.
+    SwiftFlutterForegroundTaskPlugin.registerAppRefreshForBackgroundLaunch()
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

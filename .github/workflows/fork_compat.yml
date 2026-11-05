@@ -1,0 +1,84 @@
+name: fork-compat
+
+# Fork-only workflow: verifies this fork on Flutter 3.44.2 — Decaid's pinned toolchain, i.e. the oldest
+# toolchain the downstream actually uses. It does NOT exercise the declared floor (Dart 3.10 / Flutter
+# 3.22), which is inherited from 9.2.2 and untested below 3.44.2 here.
+# Upstream's own CI (.github/workflows/ci_master.yml) is untouched.
+
+on:
+  push:
+    branches: [ "master", "fix/**" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  flutter-3-44-2:
+    name: Flutter 3.44.2 (plugin)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter 3.44.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+      - run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze (errors block, info/warning only allowed)
+        run: |
+          set -o pipefail
+          flutter analyze --no-fatal-infos --no-fatal-warnings | tee analyze.log
+          ! grep -q "error •" analyze.log
+
+      - name: Run tests
+        run: flutter test
+
+  android-3-44-2:
+    name: Android Flutter 3.44.2 (example)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter 3.44.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+      - run: flutter --version
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build example app
+        working-directory: example
+        run: flutter build apk --debug
+
+  ios-3-44-2:
+    name: iOS Flutter 3.44.2 (example, no codesign)
+    runs-on: macos-latest
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter 3.44.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+      - run: flutter --version
+
+      - name: Build example app
+        working-directory: example
+        run: flutter build ios --debug --simulator
