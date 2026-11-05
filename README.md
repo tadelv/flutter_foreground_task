@@ -102,6 +102,8 @@ You can also run `flutter_foreground_task` on the iOS platform. However, it has 
 * The task cannot be started automatically on boot like Android OS.
 * The task runs in the background for approximately 30 seconds every 15 minutes. This may take longer than 15 minutes due to iOS limitations.
 
+iOS background app refresh is **opt-in**. The plugin no longer registers a BGTaskScheduler task on its own, and it only requests a legacy background-fetch interval when `fetch` is declared; the Info.plist entries below are only needed if you want the approximately 30-second / 15-minute background refresh. To opt in, also call `SwiftFlutterForegroundTaskPlugin.registerAppRefreshForBackgroundLaunch()` from `AppDelegate.application(_:didFinishLaunchingWithOptions:)` before it returns.
+
 **Info.plist**:
 
 Add the key below to `ios/Runner/info.plist` file so that the task can run in the background.

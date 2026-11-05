@@ -25,11 +25,27 @@ public class SwiftFlutterForegroundTaskPlugin: NSObject, FlutterPlugin {
     registerPlugins = callback
   }
 
+  /// Opt-in entry point for iOS background app refresh.
+  ///
+  /// This is the only path that registers the BGTaskScheduler task, because Apple requires
+  /// `BGTaskScheduler.register` to be called before `application(_:didFinishLaunchingWithOptions:)`
+  /// returns. A Flutter plugin cannot satisfy that from its own lifecycle callback: with the UIScene
+  /// lifecycle Flutter delivers `didFinishLaunching` after launch completed (and possibly after the
+  /// scene connected), which trips a BGTaskScheduler assertion. See
+  /// https://github.com/Dev-hwang/flutter_foreground_task/issues/393.
+  ///
+  /// To opt in, a host app must:
+  ///   1. declare `com.pravera.flutter_foreground_task.refresh` in `BGTaskSchedulerPermittedIdentifiers`,
+  ///   2. declare `fetch` in `UIBackgroundModes`,
+  ///   3. call this method from `AppDelegate.application(_:didFinishLaunchingWithOptions:)` before returning.
+  /// The Objective-C `+load` shims call it at image-load time for the same reason; extra calls are ignored
+  /// once the task is registered. Hosts that do not opt in never register, never schedule, and need neither
+  /// Info.plist entry.
   @objc public static func registerAppRefreshForBackgroundLaunch() {
     if #available(iOS 13.0, *) {
       let permitted = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String] ?? []
       guard permitted.contains(refreshIdentifier) else { return }
-      registerAppRefresh()
+      registerRefreshTaskIfNeeded()
     }
   }
   
@@ -96,10 +112,17 @@ public class SwiftFlutterForegroundTaskPlugin: NSObject, FlutterPlugin {
   
   // ================== App Lifecycle ===================
   public func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [AnyHashable : Any] = [:]) -> Bool {
-    UIApplication.shared.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
-    if #available(iOS 13.0, *) {
-      SwiftFlutterForegroundTaskPlugin.registerAppRefresh()
+    // Deprecated since iOS 13, but still the trigger for legacy (pre-iOS-13) background fetch, and the
+    // podspec supports iOS 12. Only ask for a fetch window when the host declared the capability, so an
+    // app that does not use background fetch is never scheduled one.
+    if let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
+       modes.contains("fetch") {
+      UIApplication.shared.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
     }
+    // Deliberately no BGTaskScheduler registration here: Flutter only delivers this plugin
+    // application-delegate callback after launch completed, which is too late for
+    // BGTaskScheduler.register (Dev-hwang/flutter_foreground_task#393, decentespresso/decaid#1073).
+    // iOS background app refresh is opt-in through registerAppRefreshForBackgroundLaunch().
     return true
   }
   
@@ -146,16 +169,21 @@ public class SwiftFlutterForegroundTaskPlugin: NSObject, FlutterPlugin {
   private static var isBgTaskRegistered: Bool = false
 
   @available(iOS 13.0, *)
-  private static func registerAppRefresh() {
+  private static func registerRefreshTaskIfNeeded() {
     guard !isBgTaskRegistered else { return }
-    isBgTaskRegistered = true
-    BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshIdentifier, using: nil) { task in
+    // The flag records whether registration actually succeeded, not merely that it was attempted.
+    // Both callers (the Obj-C +load shims at image-load time, and AppDelegate.didFinishLaunching) run on
+    // the main thread before the app is interactive, so this one-time state needs no further locking.
+    isBgTaskRegistered = BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshIdentifier, using: nil) { task in
       handleAppRefresh(task: task as! BGAppRefreshTask)
     }
   }
   
   @available(iOS 13.0, *)
   private static func scheduleAppRefresh() {
+    // A host that never opted in has no registered handler; never submit a task for it.
+    guard isBgTaskRegistered else { return }
+
     let request = BGAppRefreshTaskRequest(identifier: refreshIdentifier)
     request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
     

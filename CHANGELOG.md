@@ -1,3 +1,33 @@
+## 11.0.3+2
+
+Fork review follow-ups on top of 11.0.3+1 (no behaviour change for hosts that already opted in).
+
+* [**CHORE**] Keep upstream's `environment:` block unchanged (`sdk: ^3.12.0` / `flutter: ">=3.44.0"`):
+  Flutter 3.44.2 ships Dart 3.12.2, so the downstream consumer's pinned toolchain already satisfies it. The
+  floor relaxation in the previous entry was based on a wrong Flutter↔Dart pairing and is reverted. Review
+  point 2.
+* [**FIX-iOS**] Only request the legacy background-fetch interval
+  (`UIApplication.shared.setMinimumBackgroundFetchInterval`, deprecated since iOS 13 but still the trigger
+  for pre-iOS-13 background fetch) when the host declares `fetch` in `UIBackgroundModes`. Guarded rather
+  than removed, because the podspec still supports iOS 12. Review point 1.
+
+## 11.0.3+1
+
+Fork patch for [decentespresso/decaid#1073](https://github.com/decentespresso/decaid/issues/1073) /
+[Dev-hwang/flutter_foreground_task#393](https://github.com/Dev-hwang/flutter_foreground_task/issues/393).
+
+* [**FIX-iOS**] Stop registering `com.pravera.flutter_foreground_task.refresh` from the plugin's
+  `didFinishLaunching` application-delegate callback, which Flutter delivers after launch completed under the
+  UIScene lifecycle and which aborts (`BGTaskScheduler` assertion, SIGABRT) for hosts that did not opt in.
+  iOS background app refresh is now opt-in only: register through
+  `registerAppRefreshForBackgroundLaunch()` from `AppDelegate.didFinishLaunching` (or via the ObjC `+load`
+  shim) with the Info.plist prerequisites. Scheduling is gated on that opt-in.
+* No public Dart API change and no Android change relative to upstream 11.0.3.
+* [~~CHORE-FORK~~] `environment` briefly relaxed to `sdk: ^3.10.0` / `flutter: ">=3.22.0"`. **Reverted in
+  11.0.3+2** — the relaxation assumed Flutter 3.44.2 shipped Dart 3.10, whereas it ships Dart 3.12.2, so
+  upstream's floor already covers the consumer toolchain. See
+  [documentation/FORK.md](./documentation/FORK.md).
+
 ## 11.0.3
 
 * [**FIX-iOS**] Include the objective-c shim in the podspec source_files so it is compiled under CocoaPods
