@@ -161,6 +161,11 @@ app configured like Decaid (`BGTaskSchedulerPermittedIdentifiers` removed, `UIBa
   `+[FlutterForegroundTaskEarlyRegistration load]` → `flutter_foreground_task_register_app_refresh()` →
   `registerAppRefreshForBackgroundLaunch()` → `registerRefreshTaskIfNeeded()` — i.e. before `main` and
   therefore inside the window Apple requires. `BGAppRefreshTask` *handler execution* was not exercised.
+- **Fetch-interval guard, same runtime**: with `fetch` in `UIBackgroundModes` an lldb breakpoint on
+  `setMinimumBackgroundFetchInterval:` stops inside the plugin's `didFinishLaunching` delegate
+  (`SwiftFlutterForegroundTaskPlugin.swift:120`). With the Decaid-shaped plist (no `fetch`, no permitted
+  identifier) neither that breakpoint nor the `registerForTaskWithIdentifier:` breakpoint stops in a 40 s
+  window, no registration is logged, and the app stays alive.
 
 Not proven here, and not claimed:
 
@@ -175,16 +180,15 @@ Not proven here, and not claimed:
 
 ## Compatibility limits
 
-- **Dart/Flutter floor: deliberately relaxed** from upstream `sdk: ^3.12.0` / `flutter: ">=3.44.0"` to
-  `sdk: ^3.10.0` / `flutter: ">=3.22.0"` (9.2.2's values). The Dart sources are byte-identical to
-  9.2.2, so the raised floor was declarative. This lets Decaid keep Flutter 3.44.2 instead of moving its
-  release pipeline in the same change as a launch-crash fix.
-  What is actually verified: the plugin `pub get`/`analyze`/`test` and the example APK + iOS simulator
-  builds on **Flutter 3.47.0 locally and on Flutter 3.44.2 in `.github/workflows/fork_compat.yml`** — i.e.
-  Decaid's pinned toolchain. The declared floor (`3.10`/`3.22`), inherited from 9.2.2, is *not* exercised
-  at its minimum here; treat anything below 3.44.2 as untested. **Exit condition:** restore upstream's
-  values when Decaid moves past Flutter 3.46, so the patch stays upstream-proposable.
-  (Upstream's own `>=3.44.0` floor is also self-inconsistent: Dart 3.12 ships with Flutter 3.46.)
+- **Dart/Flutter floor: upstream's, unchanged** — `sdk: ^3.12.0` / `flutter: ">=3.44.0"`. Flutter
+  3.44.2 ships **Dart 3.12.2** (read from the fork-compat CI log), so the downstream consumer's pinned
+  toolchain already satisfies upstream's floor and no relaxation was needed. An earlier draft relaxed it to
+  9.2.2's values (`^3.10.0`/`>=3.22.0`) on the false assumption that Flutter 3.44.2 shipped Dart 3.10;
+  that divergence is reverted, which also keeps the whole delta upstream-proposable.
+- **CI:** `.github/workflows/fork_compat.yml` pins Flutter 3.44.2 — the downstream's exact toolchain
+  (Dart 3.12.2) — and runs the plugin `analyze`/`test` plus the example APK and iOS simulator builds.
+  Upstream's own `ci_master.yml` keeps covering the stable channel. Locally everything was also run on
+  Flutter 3.47.0 / Dart 3.13.0.
 - **Android:** unchanged, source-for-source identical to upstream `11.0.3` and to `9.2.2`. Upstream
   11.0.0 builds Kotlin without `kotlin-android` (Gradle 8.14 / AGP 8.11.1 / Kotlin 2.2.20 documented);
   Decaid already runs Gradle 8.14.3 / AGP 8.13.2 / Kotlin 2.3.21 / compileSdk 36, so nothing to do.
@@ -202,11 +206,12 @@ git rebase master                                               # resolve, keep 
 flutter pub get && flutter analyze && flutter test
 ```
 
-Keep the fork delta to: the four Swift hunks, the fork-only CI workflow, this document, the README note,
-the CHANGELOG entry, the example `AppDelegate` demonstration, the Dart regression test, and the pubspec
-`environment` block. If upstream lands its own fix for #393, prefer upstream's and delete ours:
-rerun `test/ios_app_refresh_registration_test.dart`, and re-run the simulator/lldb probe with a
-non-opted-in host.
+Keep the fork delta to: the Swift hunks, the fork-only CI workflow, this document, the README note, the
+CHANGELOG entry, the example `AppDelegate` demonstration and the Dart regression test. There is no
+SDK-floor divergence to maintain: `pubspec.yaml`'s `environment` block is upstream's.
+
+If upstream lands its own fix for #393, prefer upstream's and delete ours: rerun
+`test/ios_app_refresh_registration_test.dart` and re-run the simulator/lldb probe with a non-opted-in host.
 
 ## Proposing the fix upstream
 
@@ -214,20 +219,18 @@ non-opted-in host.
    with the root cause above and the simulator/lldb evidence (the Flutter team asked for exactly this
    shape of fix: an explicit host-callable registration API, no plugin-callback registration).
 2. Open a PR against `Dev-hwang/flutter_foreground_task:master` containing **only** the Swift hunks plus
-   the Dart regression test — no version bump, no SDK floor change, no fork CI workflow.
-3. If upstream wants the floor to stay at `^3.12.0`, that is fine: it is a fork-only divergence, not
-   part of the fix.
+   the Dart regression test — no version bump, no fork CI workflow, no fork documentation.
 
 ## Pinning policy for consumers
 
-- Consume an immutable ref: the fork tag (`fft-fork-11.0.3.1`) or the commit SHA it points at — never a
-  branch.
+- Consume an immutable ref: the **commit SHA** on `master` (tags are movable, and pub records the
+  resolved SHA in `pubspec.lock` anyway). Never a branch.
 
 ```yaml
 flutter_foreground_task:
   git:
     url: https://github.com/tadelv/flutter_foreground_task.git
-    ref: fft-fork-11.0.3.1   # or the commit SHA for belt-and-braces
+    ref: <commit-sha-of-the-merged-fix>
 ```
 
 - Roll back by reverting the single dependency commit (restoring the previous `pubspec.lock`); the fork

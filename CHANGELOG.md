@@ -2,6 +2,10 @@
 
 Fork review follow-ups on top of 11.0.3+1 (no behaviour change for hosts that already opted in).
 
+* [**CHORE**] Keep upstream's `environment:` block unchanged (`sdk: ^3.12.0` / `flutter: ">=3.44.0"`):
+  Flutter 3.44.2 ships Dart 3.12.2, so the downstream consumer's pinned toolchain already satisfies it. The
+  floor relaxation in the previous entry was based on a wrong Flutter↔Dart pairing and is reverted. Review
+  point 2.
 * [**FIX-iOS**] Only request the legacy background-fetch interval
   (`UIApplication.shared.setMinimumBackgroundFetchInterval`, deprecated since iOS 13 but still the trigger
   for pre-iOS-13 background fetch) when the host declares `fetch` in `UIBackgroundModes`. Guarded rather
@@ -19,10 +23,10 @@ Fork patch for [decentespresso/decaid#1073](https://github.com/decentespresso/de
   `registerAppRefreshForBackgroundLaunch()` from `AppDelegate.didFinishLaunching` (or via the ObjC `+load`
   shim) with the Info.plist prerequisites. Scheduling is gated on that opt-in.
 * No public Dart API change and no Android change relative to upstream 11.0.3.
-* [**CHORE-FORK**] Relax `environment` to `sdk: ^3.10.0` / `flutter: ">=3.22.0"` (9.2.2's values) so
-  consumers can stay on Flutter 3.44.2; the Dart sources are byte-identical to 9.2.2. Verified on Flutter
-  3.44.2 by the `fork-compat` workflow; the declared minimums themselves are inherited from 9.2.2 and are
-  not exercised at 3.22/3.10. See [documentation/FORK.md](./documentation/FORK.md).
+* [~~CHORE-FORK~~] `environment` briefly relaxed to `sdk: ^3.10.0` / `flutter: ">=3.22.0"`. **Reverted in
+  11.0.3+2** — the relaxation assumed Flutter 3.44.2 shipped Dart 3.10, whereas it ships Dart 3.12.2, so
+  upstream's floor already covers the consumer toolchain. See
+  [documentation/FORK.md](./documentation/FORK.md).
 
 ## 11.0.3
 

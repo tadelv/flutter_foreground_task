@@ -3,16 +3,9 @@ description: This plugin is used to implement a foreground service on the Androi
 version: 11.0.3+2
 homepage: https://github.com/Dev-hwang/flutter_foreground_task
 
-# FORK DIVERGENCE (tadelv/flutter_foreground_task): upstream 11.0.3 declares
-# `sdk: ^3.12.0` / `flutter: ">=3.44.0"`. The Dart sources here are byte-identical to 9.2.2,
-# so that raised floor is declarative rather than earned; keeping 9.2.2's floor lets
-# decentespresso/decaid stay on Flutter 3.44.2 instead of bumping its release pipeline.
-# Verified on Flutter 3.44.2 (Decaid's pinned toolchain) via .github/workflows/fork_compat.yml.
-# The declared minimums below are inherited from 9.2.2 and are NOT exercised at 3.22/3.10 here.
-# Exit condition: take upstream's values back once Decaid moves past Flutter 3.46.
 environment:
-  sdk: ^3.10.0
-  flutter: ">=3.22.0"
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
 
 dependencies:
   flutter:

@@ -1,8 +1,8 @@
 name: fork-compat
 
-# Fork-only workflow: verifies this fork on Flutter 3.44.2 — Decaid's pinned toolchain, i.e. the oldest
-# toolchain the downstream actually uses. It does NOT exercise the declared floor (Dart 3.10 / Flutter
-# 3.22), which is inherited from 9.2.2 and untested below 3.44.2 here.
+# Fork-only workflow: verifies this fork on Flutter 3.44.2 — the downstream consumer's exact toolchain.
+# Flutter 3.44.2 ships Dart 3.12.2, which satisfies upstream's declared floor (sdk ^3.12.0,
+# flutter ">=3.44.0"), so pinning it here covers the downstream case rather than a relaxed floor.
 # Upstream's own CI (.github/workflows/ci_master.yml) is untouched.
 
 on:
